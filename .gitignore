@@ -1,0 +1,9 @@
+/cmake-build-default/
+**.s
+**.lst
+**.lss
+**.o
+**.a
+**.i
+/cmake-build-debug/
+/build/
