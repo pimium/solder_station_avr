@@ -28,10 +28,11 @@ set(AVR_PROGRAMMER usbasp)
 set(AVR_UPLOADTOOL_PORT usb)
 set(WITH_MCU ON)
 # AVR and fuses needs to be set
-#set(AVR_MCU attiny2313)
-set(AVR_MCU attiny85)
+set(AVR_MCU attiny2313)
+#set(AVR_MCU attiny85)
 set(AVR_H_FUSE 0xdf)
-set(AVR_L_FUSE 0xe2)
+set(AVR_L_FUSE 0x64)
+set(AVR_E_FUSE 0xFF)
 
 ### END TOOLCHAIN SETUP AREA #############################################
 # -DCMAKE_TOOLCHAIN_FILE=./generic-gcc-avr.cmake
@@ -156,7 +157,7 @@ include_directories(
 #include_directories(. ssd1306xled i2c_bitbang num2str)
 
 #add_subdirectory(ssd1306xled)
-#add_subdirectory(i2c_bitbang)
+add_subdirectory(i2c_bitbang)
 #add_subdirectory(num2str)
 
 
@@ -189,7 +190,7 @@ add_avr_executable(
 target_link_libraries(
         ${PROJECT_NAME}-${AVR_MCU}.elf
 #        ssd1306xled-${AVR_MCU}
-#        i2c_bitbang-${AVR_MCU}
+        i2c_bitbang-${AVR_MCU}
 #        num2str-${AVR_MCU}
 )
 # target_link_libraries(${PROJECT_NAME}-${AVR_MCU}.elf)
