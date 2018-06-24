@@ -22,12 +22,13 @@
 // NOTE: The F_CPU (CPU frequency) should not be defined in the source code.
 //       It should be defined in either (1) Makefile; or (2) in the IDE.
 
-#include "i2c_bitbang.h"
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <stdint.h>
 #include <util/delay.h>
 
+#include "cpufreq.h"
+#include "hv5812.h"
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //                ATtiny
@@ -46,11 +47,12 @@
 
 // ----------------------------------------------------------------------------
 
-#include "cpufreq.h"
-
-// ----------------------------------------------------------------------------
-
-#include <util/delay.h>
+#ifndef ZERO_CROSSING
+#define ZERO_CROSSING PB4
+#endif
+#ifndef TRIAC_GATE
+#define TRIAC_GATE PD6
+#endif
 
 volatile uint16_t counter_interrupt = 0;
 volatile uint8_t armed = 0;
@@ -60,7 +62,6 @@ volatile uint8_t armed = 0;
 ISR(PCINT_vect)
 {
   cli();
-  TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00);
   counter_interrupt = 0;
   armed = 1;
   sei();
@@ -69,8 +70,19 @@ ISR(PCINT_vect)
 ISR(TIMER0_OVF_vect)
 {
   cli();
-  counter_interrupt++;
-  PORTB &= ~(1 << PB3);
+
+  if ((counter_interrupt > 0x1C) && (armed == 1))
+  {
+    counter_interrupt = 0;
+    armed = 0;
+    PORTD |= (1 << TRIAC_GATE);
+  }
+  else
+  {
+    counter_interrupt++;
+    PORTD &= ~(1 << TRIAC_GATE);
+  }
+
   sei();
 }
 
@@ -78,18 +90,17 @@ static inline void initTimer0(void)
 {
   // Timer 0 konfigurieren
   TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
-  // TCCR0B = 0; // Disable timer interrup
 
   // Overflow Interrupt erlauben
   TIMSK |= (1 << TOIE0);
 }
 
-static inline void init_PCINT_Interrupt(void)
+static inline void init_PCIE_Interrupt(void)
 {
-  GIMSK = (1 << PCIE);    // Enable INT0
-  PCMSK |= (1 << PCINT4); // pin change interrupt enabled for PCINT4
-  DDRB &= ~(1 << PB4);    // set as input
-  PORTB &= ~(1 << PB4);   // disable pull-up
+  GIMSK = (1 << PCIE);            // Enable Pin Change Interrupt
+  PCMSK |= (1 << PCINT4);         // pin change interrupt enabled for PCINT4
+  DDRB &= ~(1 << ZERO_CROSSING);  // set as input
+  PORTB &= ~(1 << ZERO_CROSSING); // disable pull-up
 }
 
 int main(void)
@@ -110,26 +121,31 @@ int main(void)
   //#error "CPU frequency should be either 1 MHz or 8 MHz"
   //#endif
 
-  _delay_ms(100);
+  //  _delay_ms(100);
 
-  DDRB &= ~(1 << PB4);
-  DDRB |= (1 << PB3) | (1 << PB1);
-  PORTB &= ~(1 << PB1);
+  DDRD |= (1 << TRIAC_GATE);
+  //  DDRB |= (1 << PB2);
+  //  PORTB &= ~(1 << PB2);
 
-  init_PCINT_Interrupt();
+  init_PCIE_Interrupt();
   initTimer0();
+  hv5812_init();
   sei();
 
+  //  PORTB |= (1 << PB1);
   // ---- Main Loop ----
+
   while (1)
   {
-    if ((counter_interrupt > 0x1D) && (armed == 1))
+    for (uint8_t i = 0; i < 0x40; ++i)
     {
-      TCCR0B |= (0 << CS12) | (0 << CS11) | (0 << CS10);
-      counter_interrupt = 0;
-      armed = 0;
-      PORTB = (1 << PB3);
+      hv5812_send_byte(i);
+      _delay_ms(700);
     }
+    //      hv5812_blank(0);
+    //                _delay_ms(700);
+    //      hv5812_blank(1);
+    //                _delay_ms(500);
   }
 
   return 0;
