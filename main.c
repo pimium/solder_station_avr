@@ -59,12 +59,12 @@ volatile uint8_t armed = 0;
 
 // ----------------------------------------------------------------------------
 
-ISR(PCINT_vect)
+ISR(INT0_vect)
 {
-  cli();
-  counter_interrupt = 0;
-  armed = 1;
-  sei();
+    cli();
+    counter_interrupt = 0;
+    armed = 1;
+    sei();
 }
 
 ISR(TIMER0_OVF_vect)
@@ -97,8 +97,8 @@ static inline void initTimer0(void)
 
 static inline void init_PCIE_Interrupt(void)
 {
-  GIMSK = (1 << PCIE);            // Enable Pin Change Interrupt
-  PCMSK |= (1 << PCINT4);         // pin change interrupt enabled for PCINT4
+  GIMSK = (1 << INT0);            // Enable Pin Change Interrupt
+  MCUCR |= (1 << ISC00);
   DDRB &= ~(1 << ZERO_CROSSING);  // set as input
   PORTB &= ~(1 << ZERO_CROSSING); // disable pull-up
 }
