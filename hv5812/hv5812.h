@@ -8,8 +8,33 @@
 
 // ============================================================================
 
-//// -----(+)--------------->	// Vcc,	Pin 1 on SSD1306 Board
-//// -----(-)--------------->	// GND,	Pin 2 on SSD1306 Board
+/*/Pin Connection  7-LT-44Z
+ a    28
+ b    27
+ c    25
+ d    24
+ e    22
+ f    21
+ g    19
+ 1G   30
+ 1G   26
+ 2G   23
+ 3G   20
+ 4G   16
+ 5G   13
+ 6G    8
+ 7G    5
+ S10  32   °C
+ //S11  31 °F
+ S12  29   °C
+ S8    4  Kolben
+ S7    6  Start Stop
+ S5    9  Ofen
+ S4    4  Glocke
+
+*/
+
+
 #ifndef HV5812_BLA
 #define HV5812_BLA PB3
 #endif

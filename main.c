@@ -59,7 +59,7 @@ volatile uint8_t armed = 0;
 
 // ----------------------------------------------------------------------------
 
-ISR(PCINT_vect)
+ISR(PCINT0_vect)
 {
   cli();
   counter_interrupt = 0;
@@ -92,13 +92,13 @@ static inline void initTimer0(void)
   TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
 
   // Overflow Interrupt erlauben
-  TIMSK |= (1 << TOIE0);
+  TIMSK0 |= (1 << TOIE0);
 }
 
 static inline void init_PCIE_Interrupt(void)
 {
-  GIMSK = (1 << PCIE);            // Enable Pin Change Interrupt
-  PCMSK |= (1 << PCINT4);         // pin change interrupt enabled for PCINT4
+  PCICR = (1 << PCIE0);            // Enable Pin Change Interrupt
+  PCMSK0 |= (1 << PCINT4);         // pin change interrupt enabled for PCINT4
   DDRB &= ~(1 << ZERO_CROSSING);  // set as input
   PORTB &= ~(1 << ZERO_CROSSING); // disable pull-up
 }
@@ -139,7 +139,7 @@ int main(void)
   {
     for (uint8_t i = 0; i < 0x40; ++i)
     {
-      hv5812_send_byte(i);
+      hv5812_send_byte(0xFF);
       _delay_ms(700);
     }
     //      hv5812_blank(0);
