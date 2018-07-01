@@ -28,7 +28,7 @@ set(AVR_PROGRAMMER usbasp)
 set(AVR_UPLOADTOOL_PORT usb)
 set(WITH_MCU ON)
 # AVR and fuses needs to be set
-set(AVR_MCU attiny2313)
+#set(AVR_MCU attiny2313)
 set(AVR_MCU atmega168)
 #set(AVR_MCU attiny85)
 set(AVR_H_FUSE 0xdf)
