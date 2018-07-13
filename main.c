@@ -50,8 +50,11 @@
 #ifndef ZERO_CROSSING
 #define ZERO_CROSSING PB4
 #endif
-#ifndef TRIAC_GATE
-#define TRIAC_GATE PD6
+#ifndef TRIAC_GATE_P
+#define TRIAC_GATE_P PD6
+#endif
+#ifndef TRIAC_GATE_N
+#define TRIAC_GATE_N PD7
 #endif
 
 volatile uint16_t counter_interrupt = 0;
@@ -70,29 +73,32 @@ ISR(PCINT0_vect)
 ISR(TIMER0_OVF_vect)
 {
   cli();
-
-  if ((counter_interrupt > 0x1C) && (armed == 1))
-  {
-    counter_interrupt = 0;
-    armed = 0;
-    PORTD |= (1 << TRIAC_GATE);
+  if(counter_interrupt == 1) {
+      PORTD |= (1 << TRIAC_GATE_N);
+      counter_interrupt = 0;
+  }else{
+      PORTD |= (1 << TRIAC_GATE_P);
+      counter_interrupt = 1;
   }
-  else
-  {
-    counter_interrupt++;
-    PORTD &= ~(1 << TRIAC_GATE);
-  }
-
   sei();
+}
+
+ISR(TIMER0_COMPB_vect)
+{
+    cli();
+    PORTD &= ~(1 << TRIAC_GATE_P);
+    PORTD &= ~(1 << TRIAC_GATE_N);
+    sei();
 }
 
 static inline void initTimer0(void)
 {
   // Timer 0 konfigurieren
-  TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
+  TCCR0B |= (0 << CS02) | (1 << CS01) | (0 << CS00); // Prescaler
 
-  // Overflow Interrupt erlauben
-  TIMSK0 |= (1 << TOIE0);
+  // Overflow Interrupt erlauben // Output Compare A Match Interrupt Enable
+  TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0B));
+  OCR0B = 0xF0;
 }
 
 static inline void init_PCIE_Interrupt(void)
@@ -105,31 +111,15 @@ static inline void init_PCIE_Interrupt(void)
 
 int main(void)
 {
-
-  // ---- Initialization ----
-
-  //    // ---- CPU Frequency Setup ----
-  //#if F_CPU == 1000000UL
-  //    #pragma message "F_CPU=1MHZ"
-  //    CLKPR_SET(CLKPR_1MHZ);
-  //#elif F_CPU == 8000000UL
-  //
-  //#pragma message "F_CPU=8MHZ"
-  //    CLKPR_SET(CLKPR_8MHZ);
-  //#else
-  //    #pragma message "F_CPU=????"
-  //#error "CPU frequency should be either 1 MHz or 8 MHz"
-  //#endif
-
   //  _delay_ms(100);
 
-  DDRD |= (1 << TRIAC_GATE);
+  DDRD |= ((1 << TRIAC_GATE_N) | (1 << TRIAC_GATE_P));
   //  DDRB |= (1 << PB2);
   //  PORTB &= ~(1 << PB2);
 
   init_PCIE_Interrupt();
   initTimer0();
-  hv5812_init();
+//  hv5812_init();
   sei();
 
   //  PORTB |= (1 << PB1);
@@ -137,15 +127,7 @@ int main(void)
 
   while (1)
   {
-    for (uint8_t i = 0; i < 0x40; ++i)
-    {
-      hv5812_send_byte(0xFF);
-      _delay_ms(700);
-    }
-    //      hv5812_blank(0);
-    //                _delay_ms(700);
-    //      hv5812_blank(1);
-    //                _delay_ms(500);
+
   }
 
   return 0;
