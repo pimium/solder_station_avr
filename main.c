@@ -48,7 +48,7 @@
 // ----------------------------------------------------------------------------
 
 #ifndef ZERO_CROSSING
-#define ZERO_CROSSING PB4
+#define ZERO_CROSSING PD2
 #endif
 #ifndef TRIAC_GATE_P
 #define TRIAC_GATE_P PD6
@@ -57,54 +57,76 @@
 #define TRIAC_GATE_N PD7
 #endif
 
-volatile uint16_t counter_interrupt = 0;
+volatile uint8_t counter_interrupt = 0;
+volatile uint8_t counter_max = 80;
 volatile uint8_t armed = 0;
+static uint8_t percentage = 28;
 
 // ----------------------------------------------------------------------------
 
-ISR(PCINT0_vect)
+ISR(INT0_vect)
 {
   cli();
+  //    counter_max = counter_interrupt;
   counter_interrupt = 0;
-  armed = 1;
+  armed = 2;
+  PORTD &= ~(1 << TRIAC_GATE_P);
+  PORTD ^= (1 << TRIAC_GATE_N);
   sei();
 }
 
 ISR(TIMER0_OVF_vect)
 {
   cli();
-  if(counter_interrupt == 1) {
-      PORTD |= (1 << TRIAC_GATE_N);
-      counter_interrupt = 0;
-  }else{
-      PORTD |= (1 << TRIAC_GATE_P);
-      counter_interrupt = 1;
+  if ((armed == 2) && (counter_interrupt > percentage))
+  {
+    PORTD |= (1 << TRIAC_GATE_P);
+    armed = 1;
   }
+  else if (((armed == 1) &&
+            counter_interrupt > (percentage + (counter_max >> 1))))
+  {
+    PORTD |= (1 << TRIAC_GATE_P);
+    armed = 0;
+  }
+  else
+  {
+    PORTD &= ~(1 << TRIAC_GATE_P);
+  }
+  counter_interrupt++;
   sei();
 }
 
 ISR(TIMER0_COMPB_vect)
 {
-    cli();
-    PORTD &= ~(1 << TRIAC_GATE_P);
-    PORTD &= ~(1 << TRIAC_GATE_N);
-    sei();
+  // cli();
+  // PORTD &= ~(1 << TRIAC_GATE_P);
+  // PORTD &= ~(1 << TRIAC_GATE_N);
+  // sei();
 }
 
 static inline void initTimer0(void)
 {
   // Timer 0 konfigurieren
-  TCCR0B |= (0 << CS02) | (1 << CS01) | (0 << CS00); // Prescaler
+  TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
 
   // Overflow Interrupt erlauben // Output Compare A Match Interrupt Enable
   TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0B));
   OCR0B = 0xF0;
 }
 
+static inline void init_IRQ0(void)
+{
+  EICRA |= (1 << ISC01);
+  EIMSK |= (1 << INT0);
+  DDRD &= ~(1 << ZERO_CROSSING);  // set as input
+  PORTD &= ~(1 << ZERO_CROSSING); // disable pull-up
+}
+
 static inline void init_PCIE_Interrupt(void)
 {
-  PCICR = (1 << PCIE0);            // Enable Pin Change Interrupt
-  PCMSK0 |= (1 << PCINT4);         // pin change interrupt enabled for PCINT4
+  PCICR = (1 << PCIE0);           // Enable Pin Change Interrupt
+  PCMSK0 |= (1 << PCINT4);        // pin change interrupt enabled for PCINT4
   DDRB &= ~(1 << ZERO_CROSSING);  // set as input
   PORTB &= ~(1 << ZERO_CROSSING); // disable pull-up
 }
@@ -117,9 +139,9 @@ int main(void)
   //  DDRB |= (1 << PB2);
   //  PORTB &= ~(1 << PB2);
 
-  init_PCIE_Interrupt();
+  init_IRQ0();
   initTimer0();
-//  hv5812_init();
+  //  hv5812_init();
   sei();
 
   //  PORTB |= (1 << PB1);
@@ -127,7 +149,7 @@ int main(void)
 
   while (1)
   {
-
+    // PORTD &= ~(1 << TRIAC_GATE_P);
   }
 
   return 0;
