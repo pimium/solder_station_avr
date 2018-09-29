@@ -31,9 +31,9 @@ set(WITH_MCU ON)
 #set(AVR_MCU attiny2313)
 set(AVR_MCU atmega168p)
 #set(AVR_MCU attiny85)
-set(AVR_H_FUSE 0xdf)
-set(AVR_L_FUSE 0x64)
-set(AVR_E_FUSE 0xFF)
+set(AVR_H_FUSE 0xDF)
+set(AVR_L_FUSE 0xE2)
+set(AVR_E_FUSE 0xF9)
 
 ### END TOOLCHAIN SETUP AREA #############################################
 # -DCMAKE_TOOLCHAIN_FILE=./generic-gcc-avr.cmake
@@ -44,7 +44,7 @@ set(AVR_E_FUSE 0xFF)
 ##########################################################################
 # name your project
 ##########################################################################
-project(oled)
+project(solder_station)
 enable_language(C ASM)
 
 ##################################################################################
@@ -68,7 +68,7 @@ endif (NOT CMAKE_BUILD_TYPE)
 ##################################################################################
 # needs to be defined for AVR toolchain
 ##################################################################################
-set(MCU_SPEED "1000000UL")
+set(MCU_SPEED "8000000UL")
 
 ##################################################################################
 # some cmake cross-compile necessities
