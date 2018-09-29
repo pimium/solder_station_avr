@@ -141,7 +141,7 @@ static inline void init_PCIE_Interrupt(void)
 static inline void adc_init()
 {
     // AREF = AVcc
-//    ADMUX = (1<<REFS0) | (1<<REFS1);
+//    ADMUX = (1<<REFS0);
 
     // ADC Enable and prescaler of 128
     // 16000000/128 = 125000
@@ -198,7 +198,7 @@ int main(void)
   //  _delay_ms(100);
 
 //  DDRD |= ((1 << TRIAC_GATE_N) | (1 << TRIAC_GATE_P));
-    DDRB |= (1 << PB2);
+    DDRB |= (1 << PB2) | (1 << PB1);
   //  PORTB &= ~(1 << PB2);
 //
 //  init_IRQ0();
@@ -225,11 +225,11 @@ int main(void)
       uart_transmit('\r');
       uart_transmit('\n');
       for (int i = 0; i < 0x8000; ++i) {
-
       }
+
       uart_transmit(hex[(j++) & 0xf]);
       PORTB ^= (1 << PB2);
-
+      PORTB ^= (1 << PB1);
 
   }
 
