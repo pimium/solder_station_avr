@@ -25,118 +25,61 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <stdint.h>
-#include <util/delay.h>
 
-#include "cpufreq.h"
 #include "hv5812.h"
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//                ATtiny
-//               25/45/85
-//              +----------+
-//      (RST)---+ PB5  Vcc +---(+)-------
-// --[OWOWOD]---+ PB3  PB2 +---[TWI/SCL]-   -sck        -sck
-//           ---+ PB4  PB1 +---             -strobe     -miso
-// -------(-)---+ GND  PB0 +---[TWI/SDA]-   -data_in    -mosi
-//              +----------+
-//
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// -----(+)--------------->	// Vcc,	Pin 1 on SSD1306 Board
-// -----(-)--------------->	// GND,	Pin 2 on SSD1306 Board
-
-// ----------------------------------------------------------------------------
-
-#ifndef ZERO_CROSSING
-#define ZERO_CROSSING PD2
-#endif
-#ifndef TRIAC_GATE_P
-#define TRIAC_GATE_P PD6
-#endif
-#ifndef TRIAC_GATE_N
-#define TRIAC_GATE_N PD7
-#endif
 
 // define some macros
 #define BAUD 9600                                   // define baud
 #define BAUDRATE ((F_CPU)/(BAUD*16UL)-1)            // set baud rate value for UBRR
 
+#ifndef LED
+#define LED PB2
+#endif
+#ifndef SOLDER
+#define SOLDER PB1
+#endif
 
 
-volatile uint8_t counter_interrupt = 0;
-volatile uint8_t counter_max = 80;
-volatile uint8_t armed = 0;
-static uint8_t percentage = 28;
+volatile static uint8_t armed = 0;
+volatile static uint16_t value;
+
+uint16_t adc_read(uint8_t channel);
 
 // ----------------------------------------------------------------------------
 
-ISR(INT0_vect)
-{
-  cli();
-  //    counter_max = counter_interrupt;
-  counter_interrupt = 0;
-  armed = 2;
-  PORTD &= ~(1 << TRIAC_GATE_P);
-  PORTD ^= (1 << TRIAC_GATE_N);
-  sei();
-}
 
 ISR(TIMER0_OVF_vect)
 {
   cli();
-  if ((armed == 2) && (counter_interrupt > percentage))
-  {
-    PORTD |= (1 << TRIAC_GATE_P);
-    armed = 1;
-  }
-  else if (((armed == 1) &&
-            counter_interrupt > (percentage + (counter_max >> 1))))
-  {
-    PORTD |= (1 << TRIAC_GATE_P);
-    armed = 0;
-  }
-  else
-  {
-    PORTD &= ~(1 << TRIAC_GATE_P);
-  }
-  counter_interrupt++;
+//    PORTB ^= (1 << LED);
+    PORTB |= (1 << SOLDER);
   sei();
 }
 
 ISR(TIMER0_COMPB_vect)
 {
-  // cli();
-  // PORTD &= ~(1 << TRIAC_GATE_P);
-  // PORTD &= ~(1 << TRIAC_GATE_N);
-  // sei();
+    armed = 1;
+    PORTB |= (1 << LED);
+    value = adc_read(0);
+}
+
+ISR(TIMER0_COMPA_vect)
+{
+    cli();
+    PORTB &= ~(1 << SOLDER);
+    sei();
 }
 
 static inline void initTimer0(void)
 {
   // Timer 0 konfigurieren
-  TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
+  TCCR0B |= (1 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
 
   // Overflow Interrupt erlauben // Output Compare A Match Interrupt Enable
-  TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0B));
-  OCR0B = 0xF0;
+  TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0A) | (1 << OCIE0B));
+  OCR0B = 0x80;
+  OCR0A = 0x10;
 }
-
-static inline void init_IRQ0(void)
-{
-  EICRA |= (1 << ISC01);
-  EIMSK |= (1 << INT0);
-  DDRD &= ~(1 << ZERO_CROSSING);  // set as input
-  PORTD &= ~(1 << ZERO_CROSSING); // disable pull-up
-}
-
-static inline void init_PCIE_Interrupt(void)
-{
-  PCICR = (1 << PCIE0);           // Enable Pin Change Interrupt
-  PCMSK0 |= (1 << PCINT4);        // pin change interrupt enabled for PCINT4
-  DDRB &= ~(1 << ZERO_CROSSING);  // set as input
-  PORTB &= ~(1 << ZERO_CROSSING); // disable pull-up
-}
-
 
 static inline void adc_init()
 {
@@ -198,11 +141,11 @@ int main(void)
   //  _delay_ms(100);
 
 //  DDRD |= ((1 << TRIAC_GATE_N) | (1 << TRIAC_GATE_P));
-    DDRB |= (1 << PB2) | (1 << PB1);
+    DDRB |= (1 << LED) | (1 << SOLDER);
   //  PORTB &= ~(1 << PB2);
 //
 //  init_IRQ0();
-//  initTimer0();
+  initTimer0();
   //  hv5812_init();
   uart_init();
   adc_init();
@@ -211,25 +154,23 @@ int main(void)
   //  PORTB |= (1 << PB1);
   // ---- Main Loop ----
 
-    uint16_t value;
   while (1)
   {
-        value = adc_read(0);
-//    value = 112;
-      uart_transmit(0x30);
-      uart_transmit('x');
-      uart_transmit(hex[(value >> 12) & 0xf]);
-      uart_transmit(hex[(value >> 8) & 0xf]);
-      uart_transmit(hex[(value >> 4) & 0xf]);
-      uart_transmit(hex[(value >> 0) & 0xf]);
-      uart_transmit('\r');
-      uart_transmit('\n');
-      for (int i = 0; i < 0x8000; ++i) {
-      }
+      if(armed) {
 
-      uart_transmit(hex[(j++) & 0xf]);
-      PORTB ^= (1 << PB2);
-      PORTB ^= (1 << PB1);
+          uart_transmit(0x30);
+          uart_transmit('x');
+          uart_transmit(hex[(value >> 12) & 0xf]);
+          uart_transmit(hex[(value >> 8) & 0xf]);
+          uart_transmit(hex[(value >> 4) & 0xf]);
+          uart_transmit(hex[(value >> 0) & 0xf]);
+          uart_transmit('\r');
+          uart_transmit('\n');
+
+          uart_transmit(hex[(j++) & 0xf]);
+          PORTB &= ~(1 << LED);
+          armed = 0;
+      }
 
   }
 
