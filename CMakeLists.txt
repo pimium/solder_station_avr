@@ -148,17 +148,10 @@ add_definitions("-std=gnu99")
 ##########################################################################
 include_directories(
         .
-#        ssd1306xled
         hv5812
-#        ssd1306xled/print_3x7
-#        ssd1306xled/print_5x7
-#        ssd1306xled/print_6x14
-#        ssd1306xled/print_10x14
 #        num2str
 )
-#include_directories(. ssd1306xled i2c_bitbang num2str)
 
-#add_subdirectory(ssd1306xled)
 add_subdirectory(hv5812)
 #add_subdirectory(num2str)
 
@@ -191,7 +184,6 @@ add_avr_executable(
 
 target_link_libraries(
         ${PROJECT_NAME}-${AVR_MCU}.elf
-#        ssd1306xled-${AVR_MCU}
         hv5812-${AVR_MCU}
 #        num2str-${AVR_MCU}
 )
