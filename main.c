@@ -23,22 +23,22 @@ void uart_transmit(unsigned char data);
 
 // ----------------------------------------------------------------------------
 
-ISR(TIMER0_OVF_vect)
+ISR(TIMER2_OVF_vect)
 {
-    if (OCR0A)
+    if (OCR2A)
     {
         PORTB |= (1 << SOLDER);
     }
 }
 
-ISR(TIMER0_COMPB_vect)
+ISR(TIMER2_COMPB_vect)
 {
     PORTB &= ~(1 << SOLDER);
     PORTB |= (1 << LED);
     measuring = 1;
 }
 
-ISR(TIMER0_COMPA_vect)
+ISR(TIMER2_COMPA_vect)
 {
     PORTB &= ~(1 << SOLDER);
 }
@@ -47,11 +47,21 @@ static inline void initTimer0(void)
 {
     // Timer 0 konfigurieren
     TCCR0B |= (1 << CS02) | (0 << CS01) | (0 << CS00); // Prescaler
-
-    // Overflow Interrupt erlauben // Output Compare A Match Interrupt Enable
-    TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0A) | (1 << OCIE0B));
-    OCR0B = 0x80;
+    TCCR0A |= ((1 << COM0A1) | (0 << COM0A0) | (1 << WGM00));
+            // Overflow Interrupt erlauben // Output Compare B Match Interrupt Enable
+    TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0B));
     OCR0A = 0x00;
+}
+
+static inline void initTimer2(void)
+{
+    // Timer 0 konfigurieren
+    TCCR2B |= ((1 << CS22) | (0 << CS21) | (0 << CS20)); // Prescaler
+
+    // Overflow Interrupt erlauben // Output Compare A and B Match Interrupt Enable
+    TIMSK2 |= ((1 << TOIE2) | (1 << OCIE2A) | (1 << OCIE2B));
+    OCR2B = 0x80;
+    OCR2A = 0x00;
 }
 
 static inline void adc_init()
@@ -141,8 +151,10 @@ int main(void)
     float x_est_last = 0;
     uint16_t z_measured; //the 'noisy' value we measured
 
+    uint8_t j = 0;
+
     //  init_IRQ0();
-    initTimer0();
+    initTimer2();
     //  hv5812_init();
     uart_init();
     adc_init();
@@ -186,7 +198,7 @@ int main(void)
             if (y < 0)
                 y = 0;
 
-            OCR0A = y;
+            OCR2A = y;
             uart_transmit(hex[((uint16_t) x_est >> 8) & 0xf]);
             uart_transmit(hex[((uint16_t) x_est >> 4) & 0xf]);
             uart_transmit(hex[((uint16_t) x_est >> 0) & 0xf]);
@@ -195,6 +207,8 @@ int main(void)
 
             //          uart_transmit(hex[(j++) & 0xf]);
             //          PORTB &= ~(1 << LED);
+
+            uart_transmit(hex[(j++) & 0xf]);
             measuring = 0;
             PORTB &= ~(1 << LED);
         }
