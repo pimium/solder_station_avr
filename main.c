@@ -15,7 +15,7 @@
 #define SOLDER PB1
 #endif
 
-volatile static uint8_t armed = 0;
+volatile static uint8_t measuring = 0;
 volatile static uint16_t value;
 
 uint16_t adc_read(uint8_t channel);
@@ -25,47 +25,33 @@ void uart_transmit(unsigned char data);
 
 ISR(TIMER0_OVF_vect)
 {
-    cli();
-    //    PORTB ^= (1 << LED);
-    if (!armed)
+    if (OCR0A)
     {
         PORTB |= (1 << SOLDER);
     }
-    sei();
 }
 
 ISR(TIMER0_COMPB_vect)
 {
-
-    //    PORTB |= (1 << LED);
+    PORTB &= ~(1 << SOLDER);
+    PORTB |= (1 << LED);
+    measuring = 1;
 }
 
 ISR(TIMER0_COMPA_vect)
 {
-    cli();
-    if (!armed) {
-        armed = 1;
-        PORTB &= ~(1 << SOLDER);
-        PORTB ^= (1 << LED);
-        uart_transmit('R');
-        //        uart_transmit('e');
-        //        uart_transmit('a');
-        //        uart_transmit('d');
-        uart_transmit('\r');
-        uart_transmit('\n');
-    }
-    sei();
+    PORTB &= ~(1 << SOLDER);
 }
 
 static inline void initTimer0(void)
 {
     // Timer 0 konfigurieren
-    TCCR0B |= (1 << CS02) | (0 << CS01) | (1 << CS00); // Prescaler
+    TCCR0B |= (1 << CS02) | (0 << CS01) | (0 << CS00); // Prescaler
 
     // Overflow Interrupt erlauben // Output Compare A Match Interrupt Enable
-    TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0A) | (1 << OCIE0A));
+    TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0A) | (1 << OCIE0B));
     OCR0B = 0x80;
-    OCR0A = 0x80;
+    OCR0A = 0x00;
 }
 
 static inline void adc_init()
@@ -138,13 +124,23 @@ int hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
              '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 int main(void)
 {
-    volatile int j;
-    //  _delay_ms(100);
 
-    //  DDRD |= ((1 << TRIAC_GATE_N) | (1 << TRIAC_GATE_P));
     DDRB |= (1 << LED) | (1 << SOLDER);
-    //  PORTB &= ~(1 << PB2);
-    //
+    PORTB &= ~(1 << SOLDER);
+    PORTB &= ~(1 << LED);
+
+    //the noise in the system
+    float Q = 0.022;
+    float R = 0.917;
+//    Kalman-Gain
+    float K = 0.143359;
+
+    float x_temp_est;
+    float x_est;
+    //initialize with a measurement
+    float x_est_last = 0;
+    uint16_t z_measured; //the 'noisy' value we measured
+
     //  init_IRQ0();
     initTimer0();
     //  hv5812_init();
@@ -152,31 +148,68 @@ int main(void)
     adc_init();
     sei();
 
-    //  PORTB |= (1 << PB1);
+    uint16_t soll = 300;
+    float y, ealt, e = 0;
+    float esum = 0;
+    uint8_t Kp = 15;
+    float Ki = 0.0025, Kd = 0.02;
+    float Ta = 1.0;
+
     // ---- Main Loop ----
 
     while (1)
     {
-        if (armed)
+        if (measuring)
         {
-            value = adc_readmean();
-            //          uart_transmit(0x30);
-            //          uart_transmit('x');
-            //          uart_transmit(hex[(value >> 12) & 0xf]);
-            uart_transmit(hex[(value >> 8) & 0xf]);
-            uart_transmit(hex[(value >> 4) & 0xf]);
-            uart_transmit(hex[(value >> 0) & 0xf]);
+            for (int i = 0; i < 1; ++i) {
+                //do a prediction
+                x_temp_est = x_est_last;
+                //measure
+                z_measured = adc_read(0);
+                //correct
+                x_est = x_temp_est + K * (z_measured - x_temp_est);
+                //update our last's
+                // P_last = P;
+                x_est_last = x_est;
+            }
+
+            e = soll - x_est;
+            esum = esum + e;
+            y = Kp * e + Ki * Ta * esum + Kd * (e - ealt)/Ta;
+            ealt = e;
+            if (esum > 10000)
+                esum = 10000;
+            if(esum < -10000)
+                esum = -10000;
+            if (y > 0x70)
+                y = 0x70;
+            if (y < 0)
+                y = 0;
+
+            OCR0A = y;
+            uart_transmit(hex[((uint16_t) x_est >> 8) & 0xf]);
+            uart_transmit(hex[((uint16_t) x_est >> 4) & 0xf]);
+            uart_transmit(hex[((uint16_t) x_est >> 0) & 0xf]);
             uart_transmit('\r');
             uart_transmit('\n');
 
             //          uart_transmit(hex[(j++) & 0xf]);
             //          PORTB &= ~(1 << LED);
-            if (value < 0xba)
-                armed = 0;
+            measuring = 0;
+            PORTB &= ~(1 << LED);
         }
     }
 
     return 0;
 }
+
+//abw = soll - ist;
+//y = Kp * abw;
+//
+//esum = esum + abw;
+//y = y + Ki * esum;
+//
+//y = y + Kd * (soll - stgAlt) / deltaT;
+//stgAlt = soll;
 
 // ============================================================================
