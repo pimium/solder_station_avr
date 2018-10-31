@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "hv5812.h"
+#include <util/delay.h>
 
 // define some macros
 #define BAUD 9600                              // define baud
@@ -46,11 +47,13 @@ ISR(TIMER2_COMPA_vect)
 static inline void initTimer0(void)
 {
     // Timer 0 konfigurieren
-    TCCR0B |= (1 << CS02) | (0 << CS01) | (0 << CS00); // Prescaler
-    TCCR0A |= ((1 << COM0A1) | (0 << COM0A0) | (1 << WGM00));
-            // Overflow Interrupt erlauben // Output Compare B Match Interrupt Enable
-    TIMSK0 |= ((1 << TOIE0) | (1 << OCIE0B));
-    OCR0A = 0x00;
+    TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00)  // Prescaler = 1
+            | (1 << WGM02); //Fast PWM
+    TCCR0A |= ((1 << COM0B1) | (0 << COM0B0) // Clear PORT OC0B on OCR0B match
+             | (1 << WGM00) | (1 << WGM01));
+
+    OCR0A = 0xFF; // Counter Top
+    OCR0B = 0x20;
 }
 
 static inline void initTimer2(void)
@@ -132,9 +135,12 @@ uint16_t adc_readmean()
 
 int hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
              '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+#define g 18
+//#define
 int main(void)
 {
 
+    DDRD |= (1 << PD5) | (1 << PD6);
     DDRB |= (1 << LED) | (1 << SOLDER);
     PORTB &= ~(1 << SOLDER);
     PORTB &= ~(1 << LED);
@@ -154,8 +160,9 @@ int main(void)
     uint8_t j = 0;
 
     //  init_IRQ0();
+    initTimer0();
     initTimer2();
-    //  hv5812_init();
+    hv5812_init();
     uart_init();
     adc_init();
     sei();
@@ -169,8 +176,28 @@ int main(void)
 
     // ---- Main Loop ----
 
+//    hv5812_send_byte(0x0F); //B
+//    hv5812_send_byte(0x28);
+//    hv5812_send_byte(0x04);
+
+//    hv5812_send_byte(0x00);
+
+
+    hv5812_write_char(1, 3);
+
+
+
     while (1)
     {
+//        uint32_t base = 0x0B0200;
+//        for (int i = 0; i < 20; ++i) {
+//            uint32_t result = base | (1 << i);
+//            hv5812_send_byte((result >> 16) | 0xFF); //
+//            hv5812_send_byte((result >> 8) | 0xFF); //
+//            hv5812_send_byte((result >> 0) | 0xFF); //
+//        }
+//        for (volatile int k = 0; k < 0xffff; ++k) {}
+//
         if (measuring)
         {
             for (int i = 0; i < 1; ++i) {
