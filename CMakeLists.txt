@@ -28,11 +28,11 @@ set(AVR_PROGRAMMER usbasp)
 set(AVR_UPLOADTOOL_PORT usb)
 set(WITH_MCU ON)
 # AVR and fuses needs to be set
-set(AVR_MCU attiny2313)
-#set(AVR_MCU attiny85)
+#set(AVR_MCU attiny2313)
+set(AVR_MCU atmega168)
 set(AVR_H_FUSE 0xdf)
-set(AVR_L_FUSE 0x64)
-set(AVR_E_FUSE 0xFF)
+set(AVR_L_FUSE 0x62)
+set(AVR_E_FUSE 0xf9)
 
 ### END TOOLCHAIN SETUP AREA #############################################
 # -DCMAKE_TOOLCHAIN_FILE=./generic-gcc-avr.cmake
@@ -43,7 +43,7 @@ set(AVR_E_FUSE 0xFF)
 ##########################################################################
 # name your project
 ##########################################################################
-project(oled)
+project(solder_station)
 enable_language(C ASM)
 
 ##################################################################################
@@ -117,10 +117,10 @@ if (CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
 endif (CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
 
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_C_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+    set(CMAKE_C_FLAGS_DEBUG "-Os -save-temps -g -gdwarf-3 -gstrict-dwarf")
+    set(CMAKE_CXX_FLAGS_DEBUG "-Os -save-temps -g -gdwarf-3 -gstrict-dwarf")
     set(CMAKE_ASM_FLAGS_DEBUG "-DF_CPU=${MCU_SPEED} -x assembler-with-cpp -Wa,-gdwarf2")
-    SET(CMAKE_ASM_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf -x assembler-with-cpp")
+    SET(CMAKE_ASM_FLAGS_DEBUG "-Os -save-temps -g -gdwarf-3 -gstrict-dwarf -x assembler-with-cpp")
 endif (CMAKE_BUILD_TYPE MATCHES Debug)
 
 ##################################################################################
@@ -148,7 +148,7 @@ add_definitions("-std=gnu99")
 include_directories(
         .
 #        ssd1306xled
-        hv5812
+#        hv5812
 #        ssd1306xled/print_3x7
 #        ssd1306xled/print_5x7
 #        ssd1306xled/print_6x14
@@ -167,6 +167,7 @@ include_directories(
 add_avr_executable(
         ${PROJECT_NAME}
         main.c
+#        pid.c
         cpufreq.h
 )
 
