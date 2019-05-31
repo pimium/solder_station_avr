@@ -31,7 +31,7 @@ set(WITH_MCU ON)
 #set(AVR_MCU attiny2313)
 set(AVR_MCU atmega168)
 set(AVR_H_FUSE 0xdf)
-set(AVR_L_FUSE 0x62)
+set(AVR_L_FUSE 0xe2)
 set(AVR_E_FUSE 0xf9)
 
 ### END TOOLCHAIN SETUP AREA #############################################
@@ -67,7 +67,7 @@ endif (NOT CMAKE_BUILD_TYPE)
 ##################################################################################
 # needs to be defined for AVR toolchain
 ##################################################################################
-set(MCU_SPEED "1000000UL")
+set(MCU_SPEED "8000000UL")
 
 ##################################################################################
 # some cmake cross-compile necessities
@@ -147,8 +147,9 @@ add_definitions("-std=gnu99")
 ##########################################################################
 include_directories(
         .
-#        ssd1306xled
-#        hv5812
+        uart
+        vfd
+        adc
 #        ssd1306xled/print_3x7
 #        ssd1306xled/print_5x7
 #        ssd1306xled/print_6x14
@@ -158,7 +159,9 @@ include_directories(
 #include_directories(. ssd1306xled i2c_bitbang num2str)
 
 #add_subdirectory(ssd1306xled)
-#add_subdirectory(num2str)
+add_subdirectory(uart)
+add_subdirectory(adc)
+add_subdirectory(vfd)
 
 
 ##################################################################################
@@ -167,7 +170,7 @@ include_directories(
 add_avr_executable(
         ${PROJECT_NAME}
         main.c
-#        pid.c
+#        uart.c
         cpufreq.h
 )
 
@@ -176,7 +179,7 @@ add_avr_executable(
 # add AVR library
 ##################################################################################
 #add_avr_library(
-#   tm1637lib
+#   uart
 #        tm1637lib/tm1637.c tm1637lib/tm1637.h tm1637lib/tm1637font.h
 #)
 
@@ -190,8 +193,9 @@ add_avr_executable(
 
 target_link_libraries(
         ${PROJECT_NAME}-${AVR_MCU}.elf
-#        ssd1306xled-${AVR_MCU}
-#        num2str-${AVR_MCU}
+        uart-${AVR_MCU}
+        adc-${AVR_MCU}
+        vfd-${AVR_MCU}
 )
 # target_link_libraries(${PROJECT_NAME}-${AVR_MCU}.elf)
 
