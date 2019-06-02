@@ -17,7 +17,7 @@
 
 volatile uint8_t rotate_counter = 0;
 volatile uint8_t state = 0;
-volatile uint8_t timer_counter = 0;
+extern uint8_t timer_counter;
 unsigned char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 #define SOLDER PC0
@@ -35,18 +35,10 @@ ISR(INT0_vect)
     state = 1;
 }
 
-ISR(TIMER0_OVF_vect)
-{
-    if(timer_counter)
-        timer_counter--;
-
-
-}
-
 static inline void initTimer0(void)
 {
     // Timer 0 configuration : Fast PWM
-    TCCR0B |= (1 << CS02) | (0 << CS01) | (1 << CS00) // Prescaler = 1024
+    TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00) // Prescaler = 1024
         //              | (0 << WGM02) //Fast PWM
             ;
     TCCR0A |= ((0 << COM0B1) | (0 << COM0B0) | (1 << WGM01));
@@ -98,6 +90,8 @@ int main(void)
      */
 //  uart_puts_P("String stored in FLASH\n");
 
+//    vfd_write_word(0, 0);
+//    vfd_write_special_character(2);
 
     uint8_t heat = 0;
 // ---- Main Loop ----
@@ -128,18 +122,21 @@ int main(void)
             }
 
             if(timer_counter == 0){
-//          uint16_t adc_hex = vfd_convert_bcd(adc_result);
+                uint16_t adc_hex = vfd_convert_bcd(rotate_counter);
                 uart_puts("adc result: ");
                 uart_putc(hex[(adc_result >> 8) & 0x0F]);
                 uart_putc(hex[(adc_result >> 4) & 0x0F]);
                 uart_putc(hex[(adc_result >> 0) & 0x0F]);
 //          uart_putc('\t');
-//          vfd_write_word(1, ((adc_hex >> 8) & 0x0F));
-//          vfd_write_word(2, ((adc_hex >> 4) & 0x0F));
-//          vfd_write_word(3, ((adc_hex >> 0) & 0x0F));
+                vfd_write_word(4, ((adc_hex >> 8) & 0x0F));
+                vfd_write_word(5, ((adc_hex >> 4) & 0x0F));
+                vfd_write_word(6, ((adc_hex >> 0) & 0x0F));
                 uart_putc('\n');
                 uart_putc('\r');
-                timer_counter = 0x8;
+                timer_counter = 0xf0;
+
+                vfd_write_special_character(7);
+                vfd_write_special_character(4);
             }
 
         }
@@ -185,6 +182,12 @@ int main(void)
             uart_puts("\nI get: ");
             uart_putc((unsigned char)c);
             uart_putc('\n');
+
+            vfd_write_word(0, 4);
+            vfd_write_word(1, 1);
+            vfd_write_word(2, 2);
+            vfd_write_word(3, 3);
+
         }
     }
 

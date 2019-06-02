@@ -21,7 +21,7 @@
 //              ------
 // ----------------------------------------------------------------------------
 void vfd_init(void);
-void vfd_write_byte(uint8_t byte);
+//void vfd_write_byte(uint8_t byte);
 void vfd_write_special_character(uint8_t pos);
 void vfd_write_word(uint8_t pos, uint8_t value);
 void vfd_blank(void);
