@@ -2,8 +2,8 @@
 #include <avr/io.h>
 #include <stdint.h>
 
-#include "uart.h"
 #include "adc.h"
+#include "uart.h"
 #include "vfd.h"
 //#include "pid.h"
 
@@ -40,7 +40,7 @@ static inline void initTimer0(void)
     // Timer 0 configuration : Fast PWM
     TCCR0B |= (0 << CS02) | (0 << CS01) | (1 << CS00) // Prescaler = 1024
         //              | (0 << WGM02) //Fast PWM
-            ;
+        ;
     TCCR0A |= ((0 << COM0B1) | (0 << COM0B0) | (1 << WGM01));
 
     TIMSK0 |= (1 << TOIE0);
@@ -62,7 +62,6 @@ int main(void)
     // ---- Initialization ----
 
     unsigned int c;
-
 
     /*
      *  Initialize UART library, pass baudrate and AVR cpu clock
@@ -88,13 +87,13 @@ int main(void)
     /*
      * Transmit string from program memory to UART
      */
-//  uart_puts_P("String stored in FLASH\n");
+    //  uart_puts_P("String stored in FLASH\n");
 
-//    vfd_write_word(0, 0);
-//    vfd_write_special_character(2);
+    //    vfd_write_word(0, 0);
+    //    vfd_write_special_character(2);
 
     uint8_t heat = 0;
-// ---- Main Loop ----
+    // ---- Main Loop ----
 
     while (1)
     {
@@ -104,30 +103,32 @@ int main(void)
             /*
              * no data available from UART
              */
-            if(state)
+            if (state)
             {
                 state = 0;
                 uart_putc('\r');
                 uart_putc(hex[(rotate_counter >> 4) & 0x0F]);
                 uart_putc(hex[(rotate_counter >> 0) & 0x0F]);
                 uart_putc('\n');
-
             }
             uint16_t adc_result = adc_read(6);
-            if((1 == heat) && (adc_result < rotate_counter)){
+            if ((1 == heat) && (adc_result < rotate_counter))
+            {
                 PORTC |= (1 << SOLDER);
-            } else
+            }
+            else
             {
                 PORTC &= ~(1 << SOLDER);
             }
 
-            if(timer_counter == 0){
+            if (timer_counter == 0)
+            {
                 uint16_t adc_hex = vfd_convert_bcd(rotate_counter);
                 uart_puts("adc result: ");
                 uart_putc(hex[(adc_result >> 8) & 0x0F]);
                 uart_putc(hex[(adc_result >> 4) & 0x0F]);
                 uart_putc(hex[(adc_result >> 0) & 0x0F]);
-//          uart_putc('\t');
+                //          uart_putc('\t');
                 vfd_write_word(4, ((adc_hex >> 8) & 0x0F));
                 vfd_write_word(5, ((adc_hex >> 4) & 0x0F));
                 vfd_write_word(6, ((adc_hex >> 0) & 0x0F));
@@ -138,7 +139,6 @@ int main(void)
                 vfd_write_special_character(7);
                 vfd_write_special_character(4);
             }
-
         }
         else
         {
@@ -154,8 +154,10 @@ int main(void)
             if (c & UART_OVERRUN_ERROR)
             {
                 /*
-                 * Overrun, a character already present in the UART UDR register was
-                 * not read by the interrupt handler before the next character arrived,
+                 * Overrun, a character already present in the UART UDR register
+                 * was
+                 * not read by the interrupt handler before the next character
+                 * arrived,
                  * one or more received characters have been dropped
                  */
                 uart_puts_P("UART Overrun Error: ");
@@ -171,13 +173,15 @@ int main(void)
             /*
              * send received character back
              */
-            if(c == 'a'){
+            if (c == 'a')
+            {
                 heat = 1;
-//        PORTC |= (1 << SOLDER);
-            } else
+                //        PORTC |= (1 << SOLDER);
+            }
+            else
             {
                 heat = 0;
-//        PORTC &= ~(1 << SOLDER);
+                //        PORTC &= ~(1 << SOLDER);
             }
             uart_puts("\nI get: ");
             uart_putc((unsigned char)c);
@@ -187,7 +191,6 @@ int main(void)
             vfd_write_word(1, 1);
             vfd_write_word(2, 2);
             vfd_write_word(3, 3);
-
         }
     }
 

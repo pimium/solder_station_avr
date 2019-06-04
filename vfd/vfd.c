@@ -9,22 +9,20 @@
 #define MESSAGE_LENGTH 8
 
 // States
-void vfd_start_write_byte();
-void vfd_clear_srclr();
-void vfd_set_srclr();
-void vfd_set_clk();
-void vfd_clear_clk();
-void vfd_set_word();
+void vfd_states_start_write_byte();
+void vfd_states_set_srclr();
+void vfd_states_set_clk();
+void vfd_states_clear_clk();
+void vfd_states_set_word();
 
 volatile uint8_t timer_counter = 0;
 
 // State pointer
-void (*statefunc)() = vfd_clear_srclr;
-
+void (*statefunc)() = vfd_states_set_srclr;
 
 ISR(TIMER0_OVF_vect)
 {
-    if(timer_counter > 0)
+    if (timer_counter > 0)
         timer_counter--;
     (*statefunc)();
 }
@@ -35,7 +33,6 @@ static uint8_t data_byte = 0;
 static uint8_t byte_count = 0;
 static uint8_t actual_register = 3;
 static uint8_t actual_segment = 0;
-
 
 const uint8_t decimal_list[][2] = {
     {0x80, 0x6D}, // 0
@@ -70,34 +67,32 @@ const uint8_t symbole_list[][2] = {
     {0x25, 0x01}, // 5 Kasten
     {0x26, 0x08}, // 6 Start
     {0x06, 0x80}, // 7 Celcius
-//    {0x10, 0x08}, // 3 A am
-//    {0x10, 0x04}, // 4 P pm
-//    {0x22, 0x10}, // 6 :
-//    {0x22, 0x08}, // 2 D
+    //    {0x10, 0x08}, // 3 A am
+    //    {0x10, 0x04}, // 4 P pm
+    //    {0x22, 0x10}, // 6 :
+    //    {0x22, 0x08}, // 2 D
 };
 
-static uint8_t value_Symbol[7][2] = {
-        {0x0, 0x0},
-        {0x0, 0x0},
-        {0x0, 0x0},
-        {0x0, 0x0},
-        {0x0, 0x0},
-        {0x0, 0x0},
-        {0x0, 0x0}
-}        ;
+static uint8_t value_Symbol[7][2] = {{0x0, 0x0}, {0x0, 0x0}, {0x0, 0x0},
+                                     {0x0, 0x0}, {0x0, 0x0}, {0x0, 0x0},
+                                     {0x0, 0x0}};
 
 void vfd_write_special_character(uint8_t symb)
 {
-    uint8_t filament_byte = symbole_list[symb][0];
-    uint8_t symb_value = symbole_list[symb][1];
+    uint8_t filament_byte;
+    uint8_t symb_value;
+    uint8_t byte_position;
+    uint8_t filament_nr;
 
-    uint8_t byte_position = (filament_byte >> 4);
-    uint8_t filament_nr = filament_byte & 0xf;
+    symb_value = symbole_list[symb][1];
+    filament_byte = symbole_list[symb][0];
+    byte_position = filament_byte >> 4;
+    filament_nr = filament_byte & 0xf;
     value_Symbol[filament_nr][0] = byte_position;
     value_Symbol[filament_nr][1] = symb_value;
 }
 
-void vfd_set_word(void)
+void vfd_states_set_word(void)
 {
     uint8_t position_value = position_list[actual_segment][1];
     uint8_t position = position_list[actual_segment][0];
@@ -115,7 +110,7 @@ void vfd_set_word(void)
     register_value[position] = register_value[position] | position_value;
     register_value[symbol_reg] = register_value[symbol_reg] | symbol;
 
-    if(actual_segment > 5)
+    if (actual_segment > 5)
     {
         actual_segment = 0;
     }
@@ -123,8 +118,7 @@ void vfd_set_word(void)
     {
         actual_segment++;
     }
-
-    statefunc = vfd_clear_srclr;
+    statefunc = vfd_states_set_srclr;
 }
 
 void set_register_value(uint8_t value1, uint8_t value2, uint8_t value3)
@@ -149,72 +143,70 @@ void vfd_init(void)
     PORTC &= ~(1 << RCLK);
 
     PORTC |= (1 << SRCLR);
-    statefunc = vfd_set_word;
+    statefunc = vfd_states_set_word;
 }
 
-void vfd_set_rclK() {
+void vfd_set_rclK()
+{
     PORTC &= ~(1 << SRCLK);
-    if((actual_register & 0x3) == 0)
+    if ((actual_register & 0x3) == 0)
     {
-        statefunc = vfd_set_word;
+        statefunc = vfd_states_set_word;
     }
-    else if((actual_register & 0x3) == 3)
+    else if ((actual_register & 0x3) == 3)
     {
         PORTC |= (1 << RCLK);
-        statefunc = vfd_start_write_byte;
+        statefunc = vfd_states_start_write_byte;
     }
-    else{
-        statefunc = vfd_start_write_byte;
+    else
+    {
+        statefunc = vfd_states_start_write_byte;
     }
 }
 
-void vfd_set_srclr() {
+void vfd_states_set_srclr()
+{
     PORTC |= (1 << SRCLR);
-    statefunc = vfd_start_write_byte;
+    statefunc = vfd_states_start_write_byte;
 }
 
-void vfd_clear_srclr() {
-//    PORTC &= ~(1 << SRCLR);
-    statefunc = vfd_set_srclr;
-}
-
-void vfd_start_write_byte() {
-
+void vfd_states_start_write_byte()
+{
     data_byte = register_value[actual_register & 0x3];
     actual_register++;
     byte_count = MESSAGE_LENGTH;
 
-    statefunc = vfd_clear_clk;
+    statefunc = vfd_states_clear_clk;
 }
 
-void vfd_set_clk() {
+void vfd_states_set_clk()
+{
     data_byte = data_byte >> 1;
     byte_count--;
 
     PORTC |= (1 << SRCLK);
 
-    if(byte_count)
-        statefunc = vfd_clear_clk;
-    else{
+    if (byte_count)
+        statefunc = vfd_states_clear_clk;
+    else
+    {
         PORTC &= ~(1 << RCLK);
         statefunc = vfd_set_rclK;
     }
 }
 
-void vfd_clear_clk() {
+void vfd_states_clear_clk()
+{
     if (data_byte & 0x01)
         PORTC |= (1 << DATA);
     else
         PORTC &= ~(1 << DATA);
 
     PORTC &= ~(1 << SRCLK);
-    statefunc = vfd_set_clk;
+    statefunc = vfd_states_set_clk;
 }
 
-void vfd_write_word(uint8_t pos, uint8_t value)
-{
-    value_position[pos] = value;
-}
+void vfd_write_word(uint8_t pos, uint8_t value) { value_position[pos] = value; }
 
 void vfd_blank(void)
 {
@@ -224,7 +216,6 @@ void vfd_blank(void)
         value_Symbol[i][0] = 0;
         value_Symbol[i][1] = 0;
     }
-
 }
 
 uint16_t vfd_convert_bcd(uint16_t binaryInput)
