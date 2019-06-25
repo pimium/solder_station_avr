@@ -90,7 +90,7 @@ int main(void)
     //  uart_puts_P("String stored in FLASH\n");
 
     //    vfd_write_word(0, 0);
-    //    vfd_write_special_character(2);
+    vfd_write_special_character(7);
 
     uint8_t heat = 0;
     // ---- Main Loop ----
@@ -123,21 +123,18 @@ int main(void)
 
             if (timer_counter == 0)
             {
-                uint16_t adc_hex = vfd_convert_bcd(rotate_counter);
+                uint16_t adc_hex = vfd_convert_bcd(adc_result);
                 uart_puts("adc result: ");
                 uart_putc(hex[(adc_result >> 8) & 0x0F]);
                 uart_putc(hex[(adc_result >> 4) & 0x0F]);
                 uart_putc(hex[(adc_result >> 0) & 0x0F]);
                 //          uart_putc('\t');
-                vfd_write_word(4, ((adc_hex >> 8) & 0x0F));
-                vfd_write_word(5, ((adc_hex >> 4) & 0x0F));
-                vfd_write_word(6, ((adc_hex >> 0) & 0x0F));
+                vfd_write_word(1, ((adc_hex >> 8) & 0x0F));
+                vfd_write_word(2, ((adc_hex >> 4) & 0x0F));
+                vfd_write_word(3, ((adc_hex >> 0) & 0x0F));
                 uart_putc('\n');
                 uart_putc('\r');
-                timer_counter = 0xf0;
-
-                vfd_write_special_character(7);
-                vfd_write_special_character(4);
+                timer_counter = 0xff;
             }
         }
         else
@@ -176,21 +173,22 @@ int main(void)
             if (c == 'a')
             {
                 heat = 1;
-                //        PORTC |= (1 << SOLDER);
+                vfd_write_special_character(4);
             }
             else
             {
                 heat = 0;
-                //        PORTC &= ~(1 << SOLDER);
+                vfd_blank();
+                vfd_write_special_character(7);
             }
             uart_puts("\nI get: ");
             uart_putc((unsigned char)c);
             uart_putc('\n');
 
-            vfd_write_word(0, 4);
-            vfd_write_word(1, 1);
-            vfd_write_word(2, 2);
-            vfd_write_word(3, 3);
+            //            vfd_write_word(0, 4);
+            //            vfd_write_word(1, 1);
+            //            vfd_write_word(2, 2);
+            //            vfd_write_word(3, 3);
         }
     }
 

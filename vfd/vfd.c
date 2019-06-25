@@ -8,23 +8,28 @@
 
 #define MESSAGE_LENGTH 8
 
+typedef void *(*state_func)();
+
 // States
-void vfd_states_start_write_byte();
-void vfd_states_set_srclr();
-void vfd_states_set_clk();
-void vfd_states_clear_clk();
-void vfd_states_set_word();
+void *vfd_states_start_write_byte();
+void *vfd_states_set_srclr();
+void *vfd_states_set_clk();
+void *vfd_states_clear_clk();
+void *vfd_states_set_word();
 
 volatile uint8_t timer_counter = 0;
 
 // State pointer
-void (*statefunc)() = vfd_states_set_srclr;
+state_func statefunc = vfd_states_set_srclr;
 
 ISR(TIMER0_OVF_vect)
 {
     if (timer_counter > 0)
         timer_counter--;
-    (*statefunc)();
+
+#pragma GCC diagnostic ignored "-Wpedantic"
+    statefunc = (state_func)(*statefunc)();
+#pragma GCC diagnostic pop
 }
 
 static uint8_t value_position[7] = {0xa, 0xa, 0xa, 0xa, 0xa, 0xa, 0xa};
@@ -92,7 +97,7 @@ void vfd_write_special_character(uint8_t symb)
     value_Symbol[filament_nr][1] = symb_value;
 }
 
-void vfd_states_set_word(void)
+void *vfd_states_set_word(void)
 {
     uint8_t position_value = position_list[actual_segment][1];
     uint8_t position = position_list[actual_segment][0];
@@ -118,7 +123,9 @@ void vfd_states_set_word(void)
     {
         actual_segment++;
     }
-    statefunc = vfd_states_set_srclr;
+#pragma GCC diagnostic ignored "-Wpedantic"
+    return vfd_states_set_srclr;
+#pragma GCC diagnostic pop
 }
 
 void set_register_value(uint8_t value1, uint8_t value2, uint8_t value3)
@@ -143,59 +150,70 @@ void vfd_init(void)
     PORTC &= ~(1 << RCLK);
 
     PORTC |= (1 << SRCLR);
+
     statefunc = vfd_states_set_word;
 }
 
-void vfd_set_rclK()
+void *vfd_state_set_rclK()
 {
+    state_func func = vfd_states_start_write_byte;
+
     PORTC &= ~(1 << SRCLK);
     if ((actual_register & 0x3) == 0)
     {
-        statefunc = vfd_states_set_word;
+        func = vfd_states_set_word;
     }
     else if ((actual_register & 0x3) == 3)
     {
         PORTC |= (1 << RCLK);
-        statefunc = vfd_states_start_write_byte;
+        func = vfd_states_start_write_byte;
     }
     else
     {
-        statefunc = vfd_states_start_write_byte;
     }
+#pragma GCC diagnostic ignored "-Wpedantic"
+    return func;
+#pragma GCC diagnostic pop
 }
 
-void vfd_states_set_srclr()
+void *vfd_states_set_srclr()
 {
     PORTC |= (1 << SRCLR);
-    statefunc = vfd_states_start_write_byte;
+#pragma GCC diagnostic ignored "-Wpedantic"
+    return vfd_states_start_write_byte;
+#pragma GCC diagnostic pop
 }
 
-void vfd_states_start_write_byte()
+void *vfd_states_start_write_byte()
 {
     data_byte = register_value[actual_register & 0x3];
     actual_register++;
     byte_count = MESSAGE_LENGTH;
-
-    statefunc = vfd_states_clear_clk;
+#pragma GCC diagnostic ignored "-Wpedantic"
+    return vfd_states_clear_clk;
+#pragma GCC diagnostic pop
 }
 
-void vfd_states_set_clk()
+void *vfd_states_set_clk()
 {
+    state_func func = vfd_state_set_rclK;
     data_byte = data_byte >> 1;
     byte_count--;
 
     PORTC |= (1 << SRCLK);
 
     if (byte_count)
-        statefunc = vfd_states_clear_clk;
+        func = vfd_states_clear_clk;
     else
     {
         PORTC &= ~(1 << RCLK);
-        statefunc = vfd_set_rclK;
     }
+#pragma GCC diagnostic ignored "-Wpedantic"
+    return func;
+#pragma GCC diagnostic pop
 }
 
-void vfd_states_clear_clk()
+void *vfd_states_clear_clk()
 {
     if (data_byte & 0x01)
         PORTC |= (1 << DATA);
@@ -203,7 +221,9 @@ void vfd_states_clear_clk()
         PORTC &= ~(1 << DATA);
 
     PORTC &= ~(1 << SRCLK);
-    statefunc = vfd_states_set_clk;
+#pragma GCC diagnostic ignored "-Wpedantic"
+    return vfd_states_set_clk;
+#pragma GCC diagnostic pop
 }
 
 void vfd_write_word(uint8_t pos, uint8_t value) { value_position[pos] = value; }
