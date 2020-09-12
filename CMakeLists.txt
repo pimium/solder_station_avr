@@ -24,12 +24,13 @@ cmake_minimum_required(VERSION 2.8)
 # tools to be used for programming the AVR
 ##################################################################################
 set(AVR_UPLOADTOOL avrdude)
-set(AVR_PROGRAMMER usbasp)
+#set(AVR_PROGRAMMER usbasp)
+set(AVR_PROGRAMMER avrisp2)
 set(AVR_UPLOADTOOL_PORT usb)
 set(WITH_MCU ON)
 # AVR and fuses needs to be set
 #set(AVR_MCU attiny2313)
-set(AVR_MCU atmega168)
+set(AVR_MCU atmega168p)
 set(AVR_H_FUSE 0xdf)
 set(AVR_L_FUSE 0xe2)
 set(AVR_E_FUSE 0xf9)
@@ -148,8 +149,9 @@ add_definitions("-std=gnu99")
 include_directories(
         .
         uart
-        vfd
+#        vfd
         adc
+        seven_seg
 #        ssd1306xled/print_3x7
 #        ssd1306xled/print_5x7
 #        ssd1306xled/print_6x14
@@ -161,7 +163,8 @@ include_directories(
 #add_subdirectory(ssd1306xled)
 add_subdirectory(uart)
 add_subdirectory(adc)
-add_subdirectory(vfd)
+#add_subdirectory(vfd)
+add_subdirectory(seven_seg)
 
 
 ##################################################################################
@@ -195,7 +198,8 @@ target_link_libraries(
         ${PROJECT_NAME}-${AVR_MCU}.elf
         uart-${AVR_MCU}
         adc-${AVR_MCU}
-        vfd-${AVR_MCU}
+#        vfd-${AVR_MCU}
+        seven_seg-${AVR_MCU}
 )
 # target_link_libraries(${PROJECT_NAME}-${AVR_MCU}.elf)
 

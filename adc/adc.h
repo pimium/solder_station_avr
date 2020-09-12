@@ -7,6 +7,6 @@
 #include <avr/io.h>
 
 void adc_init();
-uint16_t adc_read(uint8_t ch);
+uint16_t adc_read();
 
-#endif //SOLDER_STATION_ADC_H
+#endif // SOLDER_STATION_ADC_H
