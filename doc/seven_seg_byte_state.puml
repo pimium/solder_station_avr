@@ -1,0 +1,36 @@
+@startuml
+
+show empty description
+scale 200*100
+[*] --> INIT_STATE
+
+'IDLE_STATE :
+'IDLE_STATE -d-> INIT_STATE
+
+INIT_STATE : count_bit = 8
+INIT_STATE --> START_BIT_STATE : new_state == START_BIT_STATE
+INIT_STATE --> INIT_STATE
+
+START_BIT_STATE : SEVEN_SEG_DIO = low
+START_BIT_STATE --> SET_BIT_STATE
+
+SET_BIT_STATE : if (value_in & 0x80)\n SEVEN_SEG_DIO = high\n else\n SEVEN_SEG_DIO = low\ncount_bit--
+SET_BIT_STATE --> NEW_BIT_BIT_STATE
+
+NEW_BIT_BIT_STATE : value_in = value_in << 1
+NEW_BIT_BIT_STATE --> WAIT_STATE
+
+WAIT_STATE :
+WAIT_STATE --> RELEASE_BIT_STATE
+
+RELEASE_BIT_STATE : SEVEN_SEG_DIO = high
+RELEASE_BIT_STATE --> BYTE_SENT_STATE : count_bit == 0
+RELEASE_BIT_STATE --> START_BIT_STATE : count_bit != 0
+
+BYTE_SENT_STATE : new_state = INIT_STATE
+BYTE_SENT_STATE --> INIT_STATE
+'BYTE_SENT_STATE --> [*]
+
+
+@enduml
+

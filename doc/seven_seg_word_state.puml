@@ -1,0 +1,17 @@
+@startuml
+
+show empty description
+
+[*] -r-> IDLE_STATE
+'State1 : this is a string
+
+IDLE_STATE :
+IDLE_STATE -u-> Byte_Sending
+IDLE_STATE -r-> CONFIG_BYTE : (word != 0) && (position == 0)
+
+CONFIG_BYTE: value_in = value
+
+CONFIG_BYTE :
+
+@enduml
+
