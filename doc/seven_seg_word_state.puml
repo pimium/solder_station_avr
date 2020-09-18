@@ -2,16 +2,24 @@
 
 show empty description
 
-[*] -r-> IDLE_STATE
+[*] --> IDLE_STATE
 'State1 : this is a string
 
-IDLE_STATE :
-IDLE_STATE -u-> Byte_Sending
-IDLE_STATE -r-> CONFIG_BYTE : (word != 0) && (position == 0)
+IDLE_STATE : position = 0
+IDLE_STATE -l-> SEND_POSITION : new_data != 0
 
-CONFIG_BYTE: value_in = value
+SEND_POSITION: value_in = position\nnew_data = 0
+SEND_POSITION --> SEND_VALUE
+SEND_POSITION --> SEND_POSITION
 
-CONFIG_BYTE :
+SEND_VALUE : value_in = reg[position]
+SEND_VALUE --> WAIT_STATE : ====\nposition++
+SEND_VALUE --> SEND_VALUE
+
+WAIT_STATE : timeout--
+WAIT_STATE -u-> SEND_POSITION : position < 4
+WAIT_STATE -u-> IDLE_STATE : position >= 4
+WAIT_STATE --> WAIT_STATE : timeout != 0
 
 @enduml
 
