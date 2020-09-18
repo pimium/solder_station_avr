@@ -53,7 +53,7 @@ ISR(TIMER0_OVF_vect) // Timer1 ISR
 {
     PORTC |= (1 << SOLDER);
     timer_counter--;
-    seven_seg_handle();
+    seven_seg_handle_byte();
 }
 
 static inline void initTimer0(void)

@@ -9,22 +9,26 @@
 #define SEVEN_SEG_DIO PC1
 #define SEVEN_SEG_MCLR PC2
 
-enum states_enum
+enum byte_states_enum
 {
-    IDLE_STATE,
-    INIT_STATE,
-    START_BIT_STATE,
-    SET_BIT_STATE,
-    NEW_BIT_BIT_STATE,
-    WAIT_STATE,
-    RELEASE_BIT_STATE,
-    BYTE_SENT_STATE
+    INIT_BYTE_STATE,
+    START_BIT_BYTE_STATE,
+    SET_BIT_BYTE_STATE,
+    NEW_BIT_BIT_BYTE_STATE,
+    WAIT_BYTE_STATE,
+    RELEASE_BIT_BYTE_STATE,
+    BYTE_SENT_BYTE_STATE
 };
 
-volatile enum states_enum states = IDLE_STATE;
+enum word_states_enum
+{
+    IDLE_STATE
+};
 
 volatile uint8_t value_in = 0x30;
 volatile uint8_t count_bit = 0;
+volatile enum byte_states_enum new_byte_state = INIT_BYTE_STATE;
+static uint8_t intern_register[4];
 
 #define A (1 << 0)
 #define B (1 << 1)
@@ -55,20 +59,21 @@ uint8_t hexa[16] = {
 };
 
 // ISR(TIMER0_OVF_vect) // Timer1 ISR
-void seven_seg_handle(void)
+void seven_seg_handle_byte(void)
 {
-
+    static enum byte_states_enum states = INIT_BYTE_STATE;
     switch (states)
     {
-    case INIT_STATE:
-        states = START_BIT_STATE;
+    case INIT_BYTE_STATE:
+        if(new_byte_state == START_BIT_BYTE_STATE)
+            states = START_BIT_BYTE_STATE;
         count_bit = 8;
         break;
-    case START_BIT_STATE:
+    case START_BIT_BYTE_STATE:
         PORTC &= ~(1 << SEVEN_SEG_DIO);
-        states = SET_BIT_STATE;
+        states = SET_BIT_BYTE_STATE;
         break;
-    case SET_BIT_STATE:
+    case SET_BIT_BYTE_STATE:
         if (value_in & 0x80)
         {
             PORTC |= (1 << SEVEN_SEG_DIO);
@@ -78,30 +83,31 @@ void seven_seg_handle(void)
             PORTC &= ~(1 << SEVEN_SEG_DIO);
         }
         count_bit--;
-        states = NEW_BIT_BIT_STATE;
+        states = NEW_BIT_BIT_BYTE_STATE;
         break;
-    case NEW_BIT_BIT_STATE:
+    case NEW_BIT_BIT_BYTE_STATE:
         value_in = value_in << 1;
-        states = WAIT_STATE;
+        states = WAIT_BYTE_STATE;
         break;
-    case WAIT_STATE:
-        states = RELEASE_BIT_STATE;
+    case WAIT_BYTE_STATE:
+        states = RELEASE_BIT_BYTE_STATE;
         break;
 
-    case RELEASE_BIT_STATE:
+    case RELEASE_BIT_BYTE_STATE:
         PORTC |= (1 << SEVEN_SEG_DIO);
         if (count_bit == 0)
-            states = BYTE_SENT_STATE;
+            states = BYTE_SENT_BYTE_STATE;
         else
-            states = START_BIT_STATE;
+            states = START_BIT_BYTE_STATE;
         break;
-    case BYTE_SENT_STATE:
+    case BYTE_SENT_BYTE_STATE:
         PORTC |= (1 << SEVEN_SEG_DIO);
-        states = IDLE_STATE;
+            new_byte_state = INIT_BYTE_STATE;
+        states = INIT_BYTE_STATE;
         break;
     default:
         PORTC |= (1 << SEVEN_SEG_DIO);
-        states = IDLE_STATE;
+        states = INIT_BYTE_STATE;
     }
     //    PORTC ^= (1 << PC3);
 }
@@ -124,38 +130,24 @@ void seven_seg_reset(void)
 
 uint8_t write_byte(uint8_t value)
 {
-    while (states)
+    while (new_byte_state != INIT_BYTE_STATE)
         ;
-    //    if(states)
-    //        return states;
-    states = INIT_STATE;
+
+    new_byte_state = START_BIT_BYTE_STATE;
     value_in = value;
     return 0;
 }
 
-// uint8_t write_byte(uint8_t value) {
-//    for (uint8_t j = 0; j < 0x08; ++j) {
-//        PORTC &= ~(1 << SEVEN_SEG_DIO);
-//        for (volatile uint8_t j = 0; j < 0xFF; ++j)
-//            ;
-//        if (value & 0x80) {
-//            PORTC |= (1 << SEVEN_SEG_DIO);
-//        } else {
-//            PORTC &= ~(1 << SEVEN_SEG_DIO);
-//        }
-//        for (volatile uint8_t j = 0; j < 0xFF; ++j)
-//            ;
-//        PORTC |= (1 << SEVEN_SEG_DIO);
-//        for (volatile uint8_t j = 0; j < 0x80; ++j)
-//            ;
-//        value = value << 1;
-//    }
-//    PORTC |= (1 << SEVEN_SEG_DIO);
-//
-//    for (volatile uint8_t j = 0; j < 0x80; ++j)
-//        ;
-//    return 0;
-//}
+uint8_t write_byte_to_register(uint8_t pos, uint8_t value)
+{
+    if (pos < 3)
+        intern_register[pos] = value;
+    return 0;
+}
+
+void seven_handle_word(void){
+
+}
 
 uint8_t write_loop_byte(uint8_t pos, uint8_t value)
 {
