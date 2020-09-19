@@ -22,13 +22,18 @@ enum byte_states_enum
 
 enum word_states_enum
 {
-    IDLE_STATE
+    IDLE_WORD_STATE,
+    SEND_WORD_POSITION,
+    SEND_WORD_VALUE,
+    WAIT_WORD_STATE
 };
 
 volatile uint8_t value_in = 0x30;
 volatile uint8_t count_bit = 0;
+uint8_t intern_register[4] = {0, 0xff, 0, 0};
+uint8_t new_data = 0;
+
 volatile enum byte_states_enum new_byte_state = INIT_BYTE_STATE;
-static uint8_t intern_register[4];
 
 #define A (1 << 0)
 #define B (1 << 1)
@@ -58,6 +63,61 @@ uint8_t hexa[16] = {
     A | E | F | G,             // f
 };
 
+void seven_handle_word(void)
+{
+    static enum word_states_enum word_states = IDLE_WORD_STATE;
+    static uint8_t position = 0;
+    static uint8_t time_out = 0;
+    uint8_t value = 0;
+    switch (word_states)
+    {
+    case IDLE_WORD_STATE:
+        if (new_data == 1)
+        {
+            word_states = SEND_WORD_POSITION;
+            position = 0;
+        }
+        break;
+
+    case SEND_WORD_POSITION:
+        if (write_byte(position) == INIT_BYTE_STATE)
+        {
+            time_out = 0x1f;
+            word_states = SEND_WORD_VALUE;
+        }
+        break;
+
+    case SEND_WORD_VALUE:
+        value = intern_register[position];
+
+        if (write_byte(value) == INIT_BYTE_STATE)
+        {
+            position++;
+            word_states = WAIT_WORD_STATE;
+        }
+        break;
+
+    case WAIT_WORD_STATE:
+        if (time_out)
+            time_out--;
+        else
+        {
+            if (position > 3)
+            {
+                new_data = 0;
+                word_states = IDLE_WORD_STATE;
+            }
+            else
+                word_states = SEND_WORD_POSITION;
+        }
+        break;
+
+    default:
+        word_states = IDLE_WORD_STATE;
+        break;
+    }
+}
+
 // ISR(TIMER0_OVF_vect) // Timer1 ISR
 void seven_seg_handle_byte(void)
 {
@@ -65,8 +125,10 @@ void seven_seg_handle_byte(void)
     switch (states)
     {
     case INIT_BYTE_STATE:
-        if(new_byte_state == START_BIT_BYTE_STATE)
+        if (new_byte_state == START_BIT_BYTE_STATE)
+        {
             states = START_BIT_BYTE_STATE;
+        }
         count_bit = 8;
         break;
     case START_BIT_BYTE_STATE:
@@ -102,7 +164,7 @@ void seven_seg_handle_byte(void)
         break;
     case BYTE_SENT_BYTE_STATE:
         PORTC |= (1 << SEVEN_SEG_DIO);
-            new_byte_state = INIT_BYTE_STATE;
+        new_byte_state = INIT_BYTE_STATE;
         states = INIT_BYTE_STATE;
         break;
     default:
@@ -130,45 +192,30 @@ void seven_seg_reset(void)
 
 uint8_t write_byte(uint8_t value)
 {
-    while (new_byte_state != INIT_BYTE_STATE)
-        ;
+    if (new_byte_state != INIT_BYTE_STATE)
+        return new_byte_state;
 
-    new_byte_state = START_BIT_BYTE_STATE;
     value_in = value;
+    new_byte_state = START_BIT_BYTE_STATE;
+
     return 0;
 }
 
 uint8_t write_byte_to_register(uint8_t pos, uint8_t value)
 {
-    if (pos < 3)
+    if (pos < 4)
+    {
         intern_register[pos] = value;
-    return 0;
-}
-
-void seven_handle_word(void){
-
-}
-
-uint8_t write_loop_byte(uint8_t pos, uint8_t value)
-{
-
-    //    uint8_t crc = 0x00;
-
-    //    crc = crc8(pos & 0x03, crc);
-    //    crc = crc8(value, crc);
-
-    write_byte(pos & 0x03);
-    write_byte(value);
-    //    write_byte(crc);
+        new_data = 1;
+    }
 
     return 0;
 }
 
 uint8_t seven_seg_write_display(uint8_t value)
 {
-
-    write_loop_byte(3, hexa[value & 0xf]);
-    write_loop_byte(2, hexa[value >> 4]);
+    write_byte_to_register(3, hexa[value & 0xf]);
+    write_byte_to_register(2, hexa[value >> 4]);
 
     return 0;
 }

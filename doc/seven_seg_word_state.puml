@@ -2,24 +2,24 @@
 
 show empty description
 
-[*] --> IDLE_STATE
+[*] --> IDLE_WORD_STATE
 'State1 : this is a string
 
-IDLE_STATE : position = 0
-IDLE_STATE -l-> SEND_POSITION : new_data != 0
+IDLE_WORD_STATE : position = 0
+IDLE_WORD_STATE -l-> SEND_WORD_POSITION : new_data != 0
 
-SEND_POSITION: value_in = position\nnew_data = 0
-SEND_POSITION --> SEND_VALUE
-SEND_POSITION --> SEND_POSITION
+SEND_WORD_POSITION: value_in = position\nnew_data = 0
+SEND_WORD_POSITION --> SEND_WORD_VALUE
+SEND_WORD_POSITION --> SEND_WORD_POSITION
 
-SEND_VALUE : value_in = reg[position]
-SEND_VALUE --> WAIT_STATE : ====\nposition++
-SEND_VALUE --> SEND_VALUE
+SEND_WORD_VALUE : value_in = reg[position]
+SEND_WORD_VALUE --> WAIT_WORD_STATE : ====\nposition++
+SEND_WORD_VALUE --> SEND_WORD_VALUE
 
-WAIT_STATE : timeout--
-WAIT_STATE -u-> SEND_POSITION : position < 4
-WAIT_STATE -u-> IDLE_STATE : position >= 4
-WAIT_STATE --> WAIT_STATE : timeout != 0
+WAIT_WORD_STATE : timeout--
+WAIT_WORD_STATE -u-> SEND_WORD_POSITION : position < 4
+WAIT_WORD_STATE -u-> IDLE_WORD_STATE : position >= 4
+WAIT_WORD_STATE --> WAIT_WORD_STATE : timeout != 0
 
 @enduml
 

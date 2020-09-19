@@ -19,6 +19,7 @@
 volatile uint16_t rotate_counter = 0;
 volatile uint8_t state = 0;
 volatile uint8_t timer_counter = 0;
+uint8_t heat = 0;
 
 unsigned char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7',
                        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
@@ -51,9 +52,11 @@ ISR(TIMER0_COMPB_vect) // Timer1 ISR
 
 ISR(TIMER0_OVF_vect) // Timer1 ISR
 {
-    PORTC |= (1 << SOLDER);
+    if (heat)
+        PORTC |= (1 << SOLDER);
     timer_counter--;
     seven_seg_handle_byte();
+    seven_handle_word();
 }
 
 static inline void initTimer0(void)
@@ -130,14 +133,12 @@ int main(void)
      * Transmit string from program memory to UART
      */
     uart_puts_P("String stored in FLASH\n");
-    -write_loop_byte(1, 0);
+    write_byte_to_register(1, 0);
 
-    uint8_t heat = 0;
     uint16_t adc_result = 0;
+
     //    // ---- Main Loop ----
-    //
-    //    x_est_last = adc_read(6);
-    //
+
     while (1)
     {
 
@@ -180,18 +181,17 @@ int main(void)
             if ((1 == heat) && (adc_result < rotate_counter))
             {
                 OCR0B = 0x80;
-                write_loop_byte(1, 0xF6);
+                write_byte_to_register(1, 0xF6);
             }
             else
             {
-                //                PORTC &= ~(1 << SOLDER);
                 OCR0B = 0x00;
-                write_loop_byte(1, 0x80);
+                write_byte_to_register(1, 0x80);
             }
 
             if (get_timer_count() < 0x80)
             {
-                seven_seg_reset();
+                //                seven_seg_reset();
                 //                uint16_t adc_hex =
                 //                vfd_convert_bcd(adc_result);
                 //                uint16_t rotate_hex =
@@ -251,12 +251,12 @@ int main(void)
             if (c == 'a')
             {
                 heat = 1;
-                write_loop_byte(1, 0x80);
+                write_byte_to_register(1, 0x80);
             }
             else
             {
                 heat = 0;
-                write_loop_byte(1, 0);
+                write_byte_to_register(1, 0);
             }
             uart_puts("\nI get: ");
             uart_putc((unsigned char)c);
