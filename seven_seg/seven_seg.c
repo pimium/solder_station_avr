@@ -69,6 +69,7 @@ void seven_handle_word(void)
     static uint8_t position = 0;
     static uint8_t time_out = 0;
     uint8_t value = 0;
+    uint8_t write_result = 0;
     switch (word_states)
     {
     case IDLE_WORD_STATE:
@@ -80,17 +81,18 @@ void seven_handle_word(void)
         break;
 
     case SEND_WORD_POSITION:
-        if (write_byte(position) == INIT_BYTE_STATE)
+        write_result = write_byte(position);
+        if (write_result == INIT_BYTE_STATE)
         {
-            time_out = 0x1f;
+            time_out = 0x1F;
+            value = intern_register[position];
             word_states = SEND_WORD_VALUE;
         }
         break;
 
     case SEND_WORD_VALUE:
-        value = intern_register[position];
-
-        if (write_byte(value) == INIT_BYTE_STATE)
+        write_result = write_byte(value);
+        if (write_result == INIT_BYTE_STATE)
         {
             position++;
             word_states = WAIT_WORD_STATE;

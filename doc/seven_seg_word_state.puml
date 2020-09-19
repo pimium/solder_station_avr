@@ -5,21 +5,23 @@ show empty description
 [*] --> IDLE_WORD_STATE
 'State1 : this is a string
 
-IDLE_WORD_STATE : position = 0
-IDLE_WORD_STATE -l-> SEND_WORD_POSITION : new_data != 0
+IDLE_WORD_STATE :
+IDLE_WORD_STATE --> SEND_WORD_POSITION : new_data == 1\n====\nposition = 0
+IDLE_WORD_STATE --> IDLE_WORD_STATE : new_data != 1
 
-SEND_WORD_POSITION: value_in = position\nnew_data = 0
-SEND_WORD_POSITION --> SEND_WORD_VALUE
-SEND_WORD_POSITION --> SEND_WORD_POSITION
+SEND_WORD_POSITION: write_result = write_byte(position)
+SEND_WORD_POSITION --> SEND_WORD_VALUE : write_result == INIT_BYTE_STATE\n====\nvalue = intern_register[position]\ntime_out = 0x1F
+SEND_WORD_POSITION --> SEND_WORD_POSITION : write_result != INIT_BYTE_STATE
 
-SEND_WORD_VALUE : value_in = reg[position]
-SEND_WORD_VALUE --> WAIT_WORD_STATE : ====\nposition++
-SEND_WORD_VALUE --> SEND_WORD_VALUE
+SEND_WORD_VALUE : write_result = write_byte(value)
+SEND_WORD_VALUE : timeout = 0x1F
+SEND_WORD_VALUE --> WAIT_WORD_STATE : write_result == INIT_BYTE_STATE\n====\nposition++
+SEND_WORD_VALUE --> SEND_WORD_VALUE : write_result != INIT_BYTE_STATE
 
 WAIT_WORD_STATE : timeout--
-WAIT_WORD_STATE -u-> SEND_WORD_POSITION : position < 4
-WAIT_WORD_STATE -u-> IDLE_WORD_STATE : position >= 4
 WAIT_WORD_STATE --> WAIT_WORD_STATE : timeout != 0
+WAIT_WORD_STATE --> SEND_WORD_POSITION : position < 4
+WAIT_WORD_STATE --> IDLE_WORD_STATE : position >= 4
 
 @enduml
 
