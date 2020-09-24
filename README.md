@@ -1,1 +1,1 @@
-# solder_station_avr
+# Solder Station Firmware
