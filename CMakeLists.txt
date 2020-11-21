@@ -30,8 +30,8 @@ set(AVR_UPLOADTOOL_PORT usb)
 set(WITH_MCU ON)
 # AVR and fuses needs to be set
 #set(AVR_MCU attiny2313)
-set(AVR_MCU atmega168p)
-set(AVR_H_FUSE 0xdf)
+set(AVR_MCU atmega168pb)
+set(AVR_H_FUSE 0xdc)
 set(AVR_L_FUSE 0xe2)
 set(AVR_E_FUSE 0xf9)
 
@@ -149,21 +149,17 @@ add_definitions("-std=gnu99")
 include_directories(
         .
         uart
-#        vfd
+        rotary_encoder
         adc
+        lcd
         seven_seg
-#        ssd1306xled/print_3x7
-#        ssd1306xled/print_5x7
-#        ssd1306xled/print_6x14
-#        ssd1306xled/print_10x14
-#        num2str
 )
 #include_directories(. ssd1306xled i2c_bitbang num2str)
 
-#add_subdirectory(ssd1306xled)
+add_subdirectory(lcd)
 add_subdirectory(uart)
 add_subdirectory(adc)
-#add_subdirectory(vfd)
+add_subdirectory(rotary_encoder)
 add_subdirectory(seven_seg)
 
 
@@ -173,7 +169,6 @@ add_subdirectory(seven_seg)
 add_avr_executable(
         ${PROJECT_NAME}
         main.c
-#        uart.c
         cpufreq.h
 )
 
@@ -198,7 +193,8 @@ target_link_libraries(
         ${PROJECT_NAME}-${AVR_MCU}.elf
         uart-${AVR_MCU}
         adc-${AVR_MCU}
-#        vfd-${AVR_MCU}
+        lcd-${AVR_MCU}
+        rotary_encoder-${AVR_MCU}
         seven_seg-${AVR_MCU}
 )
 # target_link_libraries(${PROJECT_NAME}-${AVR_MCU}.elf)
